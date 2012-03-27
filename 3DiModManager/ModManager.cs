@@ -19,8 +19,6 @@ namespace _3DiModManager
 		private readonly string RootPath;
 		private List<XElement> playerCars;
 
-		public bool working { get; set; }
-
 		public bool changed;
 
 		private ObservableCollection<CarEntity> _cars; 
@@ -47,20 +45,15 @@ namespace _3DiModManager
 		{
 			_cars = new ObservableCollection<CarEntity>();
 			XElement playerCarsConfig = null;
-			try
-			{
-				playerCarsConfig = XElement.Load(RootPath + PlayerCarsPath);
-			}
-			catch (Exception e)
-			{
 
-			}
+			playerCarsConfig = XElement.Load(RootPath + PlayerCarsPath);
+
 			if (playerCarsConfig.HasElements)
 			{
 				playerCars = playerCarsConfig.Elements().ToList();
-				foreach (var car in playerCars)
+				foreach (var carXml in playerCars)
 				{
-					AddCar(car);
+					_cars.Add(MakeCarFromXml(carXml));
 				}
 			}
 		}
@@ -90,14 +83,76 @@ namespace _3DiModManager
 			playerCarsConfig.Save(RootPath + PlayerCarsPath);
 		}
 
-		public void LoadCar(string fileName)
+		public CarEntity LoadCarXmlFromArchieve(string fileName)
 		{
 			FileStream input = new FileStream(fileName, FileMode.Open);
 			var archieveReader = ReaderFactory.Open(input);
+			XElement carNode = null;
 
-			List<string> entitylist = new List<string>();
+			while (archieveReader.MoveToNextEntry() && carNode==null)
+			{
+				var name = Path.GetFileName(archieveReader.Entry.FilePath);
+				if (name.EndsWith(".xml") || name.EndsWith(".txt"))
+				{
+					StreamReader input_config = null;
+					try
+					{
+						archieveReader.WriteEntryToDirectory(Path.GetTempPath());
 
-			working = true;
+						//TODO:need to select encoding here?
+						if (name.EndsWith(".xml"))
+							input_config = new StreamReader(Path.GetTempPath() + name);
+						else
+							input_config = new StreamReader(Path.GetTempPath() + name, Encoding.Default);
+
+						XElement someXml = XElement.Load(input_config, LoadOptions.PreserveWhitespace);
+
+						if (someXml.Name == "Car")
+							carNode = someXml;
+						else
+							carNode = someXml.Descendants("Car").FirstOrDefault();
+					}
+					finally
+					{
+						if (input_config != null)
+							input_config.Close();
+					}
+				}
+			}
+
+			input.Close();
+			
+			if (carNode == null)
+				{
+					//create node!
+					//handle car existance here too!
+				}
+
+			var existingCar = _cars.FirstOrDefault(m => m.Name == carNode.Attribute("Name").Value);
+
+			if (existingCar != null)
+			{
+				var result = MessageBox.Show(
+					String.Format("Автомобиль {0} ({1}) уже установлен в игре. Заменить?", existingCar.DisplayName, existingCar.Name),
+					"Внимание", MessageBoxButton.YesNo);
+				if (result == MessageBoxResult.No)
+					return null;
+
+				//remove all cars matched by name
+				while (_cars.Remove(_cars.FirstOrDefault(m => m.Name == carNode.Attribute("Name").Value))) ;
+			}
+
+			return MakeCarFromXml(carNode);
+		}
+
+		public void LoadCar(string fileName)
+		{
+			var car=LoadCarXmlFromArchieve(fileName);
+			if (car == null)
+				return;
+
+			FileStream input = new FileStream(fileName, FileMode.Open);
+			var archieveReader = ReaderFactory.Open(input);
 
 			while (archieveReader.MoveToNextEntry())
 			{
@@ -109,58 +164,8 @@ namespace _3DiModManager
 				else if (path.Contains(@"\export\"))
 				{
 					path = path.Substring(path.IndexOf(@"\export\"));
-				} 
-				else
+				} else
 				{
-					var name = archieveReader.Entry.FilePath;
-					XElement carNode=null;
-
-					if (name.EndsWith(".xml") || name.EndsWith(".txt"))
-					{
-						StreamReader input_config=null;
-						try
-						{
-							archieveReader.WriteEntryToDirectory(Path.GetTempPath());
-
-							//TODO:need to select encoding here?
-							input_config = new StreamReader(Path.GetTempPath() + name,Encoding.Default);
-
-							XElement someXml = XElement.Load(input_config, LoadOptions.PreserveWhitespace);
-
-							if (someXml.Name == "Car")
-								carNode = someXml;
-							else
-								carNode = someXml.Descendants("Car").FirstOrDefault();
-						}
-						finally
-						{
-							if(input_config!=null)
-								input_config.Close();
-						}
-					}
-					if (carNode == null)
-					{
-						//create node!
-						//handle car existance here too!
-					}
-					//and here!
-
-					var existingCar = _cars.FirstOrDefault(m => m.Name == carNode.Attribute("Name").Value);
-
-					if (existingCar != null)
-					{
-					    var result = MessageBox.Show(
-							String.Format("Автомобиль {0} ({1}) уже установлен в игре. Заменить?",existingCar.DisplayName,existingCar.Name), 
-							"Внимание", MessageBoxButton.YesNo);
-					    if (result == MessageBoxResult.No)
-					        return;
-
-						//remove all cars matched by name
-						while (_cars.Remove(_cars.FirstOrDefault(m => m.Name == carNode.Attribute("Name").Value))) ;
-					}
-
-					AddCar(carNode);
-					changed = true;
 					continue;
 				}
 
@@ -168,11 +173,12 @@ namespace _3DiModManager
 				archieveReader.WriteEntryToDirectory(RootPath+path);
 			}
 
+			_cars.Add(car);
+			changed = true;
 			input.Close();
-			//working = false;
 		}
-			
-		public void AddCar(XElement carNode)
+
+		public CarEntity MakeCarFromXml(XElement carNode, bool trackChanges=true)
 		{
 			var currentCar = new CarEntity()
 			{
@@ -184,8 +190,12 @@ namespace _3DiModManager
 				Author = carNode.Element("Author") != null ? carNode.Element("Author").Value : "",
 				IsIngame = carNode.Name.LocalName == "Car" ? true : false,
 			};
-			currentCar.PropertyChanged += (e, k) => changed = true;
-			 _cars.Add(currentCar);
+			
+			if (trackChanges)
+			{
+				currentCar.PropertyChanged += (e, k) => changed = true;
+			}
+			return currentCar;
 		}
 
 	}
