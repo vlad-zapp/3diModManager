@@ -30,3 +30,7 @@ _ReSharper*/
 *.orig
 *.gpState
 *-Results.xml
+3DiModManager/TestEnvironment/export
+3DiModManager/TestEnvironment/data/gamedata/
+3DiModManager/TestEnvironment/data/gui/
+3DiModManager/TestEnvironment/data/physics/
