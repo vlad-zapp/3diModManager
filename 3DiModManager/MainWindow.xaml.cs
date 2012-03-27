@@ -25,7 +25,10 @@ namespace _3DiModManager
 	{
 		public ModManager Manager { get; set; }
 		public List<CarEntity> Cars { get; set; }
-		private string gamePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\..\..\TestEnvironment";//@"D:\games\3D Instructor 2 Home";//games\3D Instructor 2 Home";
+		private string gamePath = 
+			Path.GetDirectoryName(
+			(Path.GetDirectoryName(
+			Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)))) + @"\TestEnvironment";//@"D:\games\3D Instructor 2 Home";//games\3D Instructor 2 Home";
 
 		public MainWindow()
 		{
@@ -34,7 +37,7 @@ namespace _3DiModManager
 			MyListView.SizeChanged += (s, e) =>
 			{
 				((GridViewColumn)((GridView)MyListView.View).Columns[0]).Width = 50;
-				((GridViewColumn)((GridView) MyListView.View).Columns[1]).Width = (e.NewSize.Width - 50)/1.5;
+				((GridViewColumn)((GridView)MyListView.View).Columns[1]).Width = (e.NewSize.Width - 50) / 1.5;
 				((GridViewColumn)((GridView)MyListView.View).Columns[2]).Width = (e.NewSize.Width - 50) - (e.NewSize.Width - 50) / 1.5; ;
 			};
 		}

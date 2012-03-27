@@ -39,7 +39,6 @@ namespace _3DiModManager
 		public ModManager(string rootPath)
 		{
 			changed = false;
-			rootPath = rootPath.Last() == '\\' ? rootPath.Substring(-1) : rootPath;
 			CheckRoot(rootPath);
 			RootPath = rootPath;
 		}

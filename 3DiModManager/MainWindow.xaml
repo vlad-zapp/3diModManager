@@ -5,13 +5,8 @@
         DataContext="{Binding RelativeSource={RelativeSource Self}}"
         Closing="Window_Closing"
         Drop="Window_Drop"
-        AllowDrop="True"
-        Name="root">
-    
-    <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-    </Window.Resources>
-    
+        AllowDrop="True">
+       
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"></ColumnDefinition>
@@ -65,7 +60,7 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Canvas Visibility="Hidden" Grid.ColumnSpan="2" Height="{Binding ElementName=root, Path=Height}" Width="{Binding ElementName=root, Path=Width}" ZIndex="10" Background="AliceBlue" HorizontalAlignment="Left" Name="canvas1">
+        <Canvas Visibility="Hidden" Grid.ColumnSpan="2" Height="{Binding Path=Height}" Width="{Binding Path=Width}" ZIndex="10" Background="AliceBlue" HorizontalAlignment="Left" Name="canvas1">
         </Canvas>
         <Grid Visibility="Hidden" Grid.ColumnSpan="2" HorizontalAlignment="Center" ZIndex="11" Name="grid1" Height="120" Width="240" >
             <Grid.RowDefinitions>
