@@ -1,28 +1,3 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Cars>
-  <Car Name="vaz_2101" ABS="true" AT="false">
-    <DisplayName>Ваз 2101</DisplayName>
-    <Description>
-		Ваз 2101
-		Тип привода:     задний
-		Тип коробки передач и кол-во передач:     МКПП: 4
-		Макс. мощность при об/мин, л.с.:     67/5600
-		Рабочий объем, см3:     1294
-		Макс. скорость, км/ч:     145
-		Время разгона (от 0 до 100 км/ч), с:     18,0
-		</Description>
-    <Author></Author>
-  </Car>
-  <Car Name="E63AMG" ABS="true" AT="true">
-    <DisplayName>Mercedes-Benz E 63 AMG</DisplayName>
-    <Description>
-		Mercedes-Benz E 63 AMG
-		Тип привода: 	 задний
-		Тип коробки передач и кол-во передач: 	 МКПП 6;АКПП 5
-		Мощность двигателя, л.с.: 507
-		Рабочий объём двигателя, куб.см.: 	4999
-		Макс. скорость, км/ч: 	 320км/ч
-		</Description>
-    <Author></Author>
-  </Car>
 </Cars>
