@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.IO;
 using System.Windows.Controls;
+using Microsoft.Win32;
 
 namespace _3DiModManager
 {
@@ -44,25 +45,50 @@ namespace _3DiModManager
 			{
 				Manager.SaveChanges();
 			}
+			Manager.CleanCarsFiles();
 		}
 
 		private void Window_Drop(object sender, DragEventArgs e)
 		{
 			if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
 			{
-				canvas1.Visibility = Visibility.Visible;
-				grid1.Visibility = Visibility.Visible;
-
 				var fileName = e.Data.GetData(DataFormats.FileDrop) as IEnumerable<string>;
 				foreach (var file in fileName)
 				{
-					Manager.LoadCar(file);
+					Manager.LoadCarFromArchieve(file);
 				}
-				
-				canvas1.Visibility = Visibility.Hidden;
-				grid1.Visibility = Visibility.Hidden;
 			}
 			e.Handled = true;
+		}
+
+		private void deleteCommand(object sender, RoutedEventArgs e)
+		{
+			if(MyListView.SelectedItem!=null)
+			{
+				Manager.DeleteCar((MyListView.SelectedItem as CarEntity).Name);
+			} else
+			{
+				MessageBox.Show("Сначала нужно выбрать автомобили для удаления", "Ошибка", MessageBoxButton.OK,
+				                MessageBoxImage.Error);
+			}
+		}
+
+		private void addCommand(object sender, RoutedEventArgs e)
+		{
+			OpenFileDialog openDlg = new OpenFileDialog();
+			openDlg.Multiselect = true;
+			openDlg.Filter += "Архивы |*.rar;*.zip";
+
+			openDlg.ShowDialog();
+			
+
+			if (openDlg.FileNames!=null)
+			{
+				foreach(var file in openDlg.FileNames)
+				{
+					Manager.LoadCarFromArchieve(file);
+				}
+			}
 		}
 	}
 }

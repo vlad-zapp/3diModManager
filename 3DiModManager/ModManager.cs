@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -13,9 +14,23 @@ using SharpCompress.Reader;
 
 namespace _3DiModManager
 {
-	public class ModManager
+	public sealed class ModManager
 	{
 		private const string PlayerCarsPath = @"\data\config\player_cars.xml";
+
+		private IEnumerable<string> CarFilePaths = new string[]
+		                                           	{
+														@"\data\gamedata\cars\",
+														@"\data\gui\Common\layouts\cars\",
+														@"\data\gui\3di_home\imagesets\cars\",
+														@"\data\physics\cars\",
+														@"\data\physics\Engine\",
+														@"\data\physics\Transmission\",
+														@"\export\gfxlib\cars\",
+														@"\export\texturesdds\cars\",
+														@"\export\meshes\cars\"
+		                                           	};
+
 		private readonly string RootPath;
 		private List<XElement> playerCars;
 
@@ -41,6 +56,11 @@ namespace _3DiModManager
 			RootPath = rootPath;
 		}
 
+		private void CheckRoot(string rootPath)
+		{
+			//rootPath.Last()=='/'?
+		}
+
 		public void UpdateCarsList()
 		{
 			_cars = new ObservableCollection<CarEntity>();
@@ -58,9 +78,21 @@ namespace _3DiModManager
 			}
 		}
 
-		private void CheckRoot(string rootPath)
+		public void CleanCarsFiles(bool carsFromXml=true)
 		{
-			//rootPath.Last()=='/'?
+			if(carsFromXml) 
+				UpdateCarsList();
+
+			var storedCars = _cars.Select(m => m.Name);
+
+			foreach (var path in CarFilePaths)
+			{
+				var trash = Directory.GetDirectories(RootPath + path).Where(m => !storedCars.Any(n=>m.EndsWith(n)));
+				foreach (var dir in trash)
+				{
+					Directory.Delete(dir,true);
+				}
+			}
 		}
 
 		public void SaveChanges()
@@ -83,7 +115,7 @@ namespace _3DiModManager
 			playerCarsConfig.Save(RootPath + PlayerCarsPath);
 		}
 
-		public CarEntity LoadCarXmlFromArchieve(string fileName)
+		private CarEntity LoadCarXmlFromArchieve(string fileName)
 		{
 			FileStream input = new FileStream(fileName, FileMode.Open);
 			var archieveReader = ReaderFactory.Open(input);
@@ -145,7 +177,7 @@ namespace _3DiModManager
 			return MakeCarFromXml(carNode);
 		}
 
-		public void LoadCar(string fileName)
+		public void LoadCarFromArchieve(string fileName)
 		{
 			var car=LoadCarXmlFromArchieve(fileName);
 			if (car == null)
@@ -178,7 +210,7 @@ namespace _3DiModManager
 			input.Close();
 		}
 
-		public CarEntity MakeCarFromXml(XElement carNode, bool trackChanges=true)
+		private CarEntity MakeCarFromXml(XElement carNode, bool trackChanges=true)
 		{
 			var currentCar = new CarEntity()
 			{
@@ -198,5 +230,11 @@ namespace _3DiModManager
 			return currentCar;
 		}
 
+		public void DeleteCar(string name)
+		{
+			var carToRemove = _cars.FirstOrDefault(m=>m.Name==name);
+			if (_cars.Remove(carToRemove))
+				changed = true;
+		}
 	}
 }

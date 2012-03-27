@@ -26,9 +26,9 @@
                     <RowDefinition></RowDefinition>
                 </Grid.RowDefinitions>
 
-                <Button Margin="0,0,0,6" Grid.Row="0" Content="Добавить" Height="23" Name="button1" Width="95" />
+                <Button Margin="0,0,0,6" Grid.Row="0" Content="Добавить" Height="23" Name="button1" Width="95" Click="addCommand" />
                 <Button Margin="0,0,0,6" Grid.Row="1" Content="Редактировать" Height="23" Name="button2" Width="95" />
-                <Button Margin="0,0,0,6" Grid.Row="2" Content="Удалить" Height="23" Name="button3" Width="95" />
+                <Button Margin="0,0,0,6" Grid.Row="2" Content="Удалить" Height="23" Name="button3" Width="95" Click="deleteCommand" />
                 <Button Margin="0,0,0,6" Grid.Row="3" Content="Инфо" Height="23" Name="button4" Width="95" />
             </Grid>
         </StackPanel>
@@ -60,15 +60,5 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Canvas Visibility="Hidden" Grid.ColumnSpan="2" Height="{Binding Path=Height}" Width="{Binding Path=Width}" ZIndex="10" Background="AliceBlue" HorizontalAlignment="Left" Name="canvas1">
-        </Canvas>
-        <Grid Visibility="Hidden" Grid.ColumnSpan="2" HorizontalAlignment="Center" ZIndex="11" Name="grid1" Height="120" Width="240" >
-            <Grid.RowDefinitions>
-                <RowDefinition Height="3*"/>
-                <RowDefinition/>
-            </Grid.RowDefinitions>
-            <Label Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center">Пожалуйста подождите</Label>
-            <ProgressBar Grid.Row="1" Name="progressBar1"></ProgressBar>
-        </Grid>
     </Grid>
 </Window>
