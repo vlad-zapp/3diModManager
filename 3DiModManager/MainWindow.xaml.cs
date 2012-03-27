@@ -90,5 +90,12 @@ namespace _3DiModManager
 				}
 			}
 		}
+
+		private void showCarDetailsCommand(object sender, RoutedEventArgs e)
+		{
+			CarSettingsWindow a = new CarSettingsWindow(MyListView.SelectedItem as CarEntity);
+			a.Show();
+			Manager.changed = true;
+		}
 	}
 }

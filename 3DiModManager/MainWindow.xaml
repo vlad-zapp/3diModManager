@@ -27,9 +27,8 @@
                 </Grid.RowDefinitions>
 
                 <Button Margin="0,0,0,6" Grid.Row="0" Content="Добавить" Height="23" Name="button1" Width="95" Click="addCommand" />
-                <Button Margin="0,0,0,6" Grid.Row="1" Content="Редактировать" Height="23" Name="button2" Width="95" />
+                <Button Margin="0,0,0,6" Grid.Row="1" Content="Редактировать" Height="23" Name="button2" Width="95" Click="showCarDetailsCommand"/>
                 <Button Margin="0,0,0,6" Grid.Row="2" Content="Удалить" Height="23" Name="button3" Width="95" Click="deleteCommand" />
-                <Button Margin="0,0,0,6" Grid.Row="3" Content="Инфо" Height="23" Name="button4" Width="95" />
             </Grid>
         </StackPanel>
 
