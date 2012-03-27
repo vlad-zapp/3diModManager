@@ -13,10 +13,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using ICSharpCode.SharpZipLib.Zip;
 using SharpCompress.Common;
 using SharpCompress.Reader;
-using ICSharpCode.SharpZipLib;
 
 namespace _3DiModManager
 {
@@ -27,7 +25,7 @@ namespace _3DiModManager
 	{
 		public ModManager Manager { get; set; }
 		public List<CarEntity> Cars { get; set; }
-		private const string gamePath = @"D:\games\3D Instructor 2 Home";//games\3D Instructor 2 Home";
+		private string gamePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\..\..\TestEnvironment";//@"D:\games\3D Instructor 2 Home";//games\3D Instructor 2 Home";
 
 		public MainWindow()
 		{
