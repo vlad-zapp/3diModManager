@@ -101,22 +101,13 @@ namespace _3DiModManager
 			var playerCarsConfig = new XElement("Cars");
 			foreach (var car in _cars)
 			{
-				XElement carXml = new XElement(car.IsIngame ? "Car" : "DisabledCar");
-				carXml.SetAttributeValue("Name",car.Name);
-				carXml.SetAttributeValue("ABS", car.ABS);
-				carXml.SetAttributeValue("AT", car.AT);
-
-				carXml.SetElementValue("DisplayName",car.DisplayName);
-				carXml.SetElementValue("Description", car.Description);
-				carXml.SetElementValue("Author", car.Author);
-
-				playerCarsConfig.Add(carXml);
+				playerCarsConfig.Add(MakeXmlFromcar(car));
 			}
 			//TODO: save it in utf8
 			playerCarsConfig.Save(RootPath + PlayerCarsPath);
 		}
 
-		private CarEntity LoadCarXmlFromArchieve(string fileName)
+		private CarEntity LoadCarConfigFromArchieve(string fileName)
 		{
 			FileStream input = new FileStream(fileName, FileMode.Open);
 			var archieveReader = ReaderFactory.Open(input);
@@ -154,35 +145,44 @@ namespace _3DiModManager
 			}
 
 			input.Close();
-			
+
 			if (carNode == null)
-				{
-					//create node!
-					//handle car existance here too!
-				}
+			{
+				return null;
+			} 
+			else
+			{
+				return MakeCarFromXml(carNode);
+			}
+		}
 
-			var existingCar = _cars.FirstOrDefault(m => m.Name == carNode.Attribute("Name").Value);
+		public void LoadCarFromArchieve(string fileName)
+		{
+			var car=LoadCarConfigFromArchieve(fileName);
+			if (car == null)
+			{
+				car = new CarEntity();
+				
+				//TODO:set name here!
 
+				var settings = new CarSettingsWindow(car);
+				settings.ShowDialog();
+
+			}
+
+			var existingCar = _cars.FirstOrDefault(m => m.Name == car.Name);
 			if (existingCar != null)
 			{
 				var result = MessageBox.Show(
 					String.Format("Автомобиль {0} ({1}) уже установлен в игре. Заменить?", existingCar.DisplayName, existingCar.Name),
 					"Внимание", MessageBoxButton.YesNo);
 				if (result == MessageBoxResult.No)
-					return null;
+					return;
 
 				//remove all cars matched by name
-				while (_cars.Remove(_cars.FirstOrDefault(m => m.Name == carNode.Attribute("Name").Value))) ;
+				while (_cars.Remove(_cars.FirstOrDefault(m => m.Name == car.Name)));
 			}
 
-			return MakeCarFromXml(carNode);
-		}
-
-		public void LoadCarFromArchieve(string fileName)
-		{
-			var car=LoadCarXmlFromArchieve(fileName);
-			if (car == null)
-				return;
 
 			FileStream input = new FileStream(fileName, FileMode.Open);
 			var archieveReader = ReaderFactory.Open(input);
@@ -229,6 +229,21 @@ namespace _3DiModManager
 				currentCar.PropertyChanged += (e, k) => changed = true;
 			}
 			return currentCar;
+		}
+
+		private XElement MakeXmlFromcar(CarEntity car)
+		{
+			XElement carXml = new XElement(car.IsIngame ? "Car" : "DisabledCar");
+
+			carXml.SetAttributeValue("Name", car.Name);
+			carXml.SetAttributeValue("ABS", car.ABS);
+			carXml.SetAttributeValue("AT", car.AT);
+
+			carXml.SetElementValue("DisplayName", car.DisplayName);
+			carXml.SetElementValue("Description", car.Description);
+			carXml.SetElementValue("Author", car.Author);
+			
+			return carXml;
 		}
 
 		public void DeleteCar(string name)
