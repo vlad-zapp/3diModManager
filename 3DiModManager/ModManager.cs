@@ -1,16 +1,11 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
-using System.Xml;
 using System.Xml.Linq;
 using SharpCompress.Reader;
 using _3DiModManager.Worklog;
@@ -49,6 +44,8 @@ namespace _3DiModManager
 
 		#endregion
 
+		#region ctor
+
 		public ModManager(string rootPath)
 		{
 			CheckRoot(rootPath);
@@ -65,7 +62,7 @@ namespace _3DiModManager
 				var playerCars = playerCarsConfig.Elements().ToList();
 				foreach (var carXml in playerCars)
 				{
-					Cars.Add(MakeCarFromXml(carXml));
+					Cars.Add(CarEntity.FromXml(carXml));
 				}
 			}
 		}
@@ -74,6 +71,8 @@ namespace _3DiModManager
 		{
 			//rootPath.Last()=='/'?
 		}
+
+		#endregion
 
 		#region add car
 
@@ -170,20 +169,16 @@ namespace _3DiModManager
 			input.Close();
 
 			if (carNode != null)
-			{
-				return MakeCarFromXml(carNode);
-			}
-			else if (nameCandidates.Count > 0)
-			{
-				return new CarEntity()
-				{
-					Name = nameCandidates.OrderBy(m => m.Value).Last().Key
-				};
-			}
-			else
-			{
-				return null;
-			}
+				return CarEntity.FromXml(carNode);
+
+			if (nameCandidates.Count > 0)
+				return 
+					new CarEntity()
+					{
+						Name = nameCandidates.OrderBy(m => m.Value).Last().Key
+					};
+
+			return null;
 		}
 
 		private void UnpackCarToGame(string fileName)
@@ -243,44 +238,11 @@ namespace _3DiModManager
 
 		#endregion
 
-		#region car-xml convertions
-		private CarEntity MakeCarFromXml(XElement carNode, bool trackChanges = true)
-		{
-			var currentCar = new CarEntity()
-			{
-				Name = carNode.Attribute("Name").Value,
-				DisplayName = carNode.Element("DisplayName").Value,
-				ABS = carNode.Attribute("ABS")!=null?bool.Parse(carNode.Attribute("ABS").Value):false,
-				AT = carNode.Attribute("AT")!=null?bool.Parse(carNode.Attribute("AT").Value):false,
-				Description = carNode.Element("Description") != null ? carNode.Element("Description").Value : string.Empty,
-				Author = carNode.Element("Author") != null ? carNode.Element("Author").Value : "Неизвестен",
-				IsIngame = carNode.Name.LocalName == "Car" ? true : false,
-			};
-
-			return currentCar;
-		}
-
-		private XElement MakeXmlFromcar(CarEntity car)
-		{
-			XElement carXml = new XElement(car.IsIngame ? "Car" : "DisabledCar");
-
-			carXml.SetAttributeValue("Name", car.Name);
-			carXml.SetAttributeValue("ABS", car.ABS);
-			carXml.SetAttributeValue("AT", car.AT);
-
-			carXml.SetElementValue("DisplayName", car.DisplayName);
-			carXml.SetElementValue("Description", car.Description);
-			carXml.SetElementValue("Author", car.Author);
-
-			return carXml;
-		}
-
-		#endregion
-
 		public void SaveChanges()
 		{
 			WaitCallback x = state =>
 			                 	{
+			                 		worklog.Optimize();
 			                 		foreach (var action in worklog.Actions)
 			                 		{
 			                 			if (action.Type == ActionType.Add)
@@ -296,7 +258,7 @@ namespace _3DiModManager
 									var playerCarsConfig = new XElement("Cars");
 									foreach (var car in Cars)
 									{
-										playerCarsConfig.Add(MakeXmlFromcar(car));
+										playerCarsConfig.Add(car.AsXml());
 									}
 
 									//TODO: force to save it in utf8?
@@ -305,6 +267,8 @@ namespace _3DiModManager
 									//worklog.Actions = new List<Action>();
 			                 		onSaved();
 			                 	};
+
+			//it will not block UI. This is for the future features.
 			ThreadPool.QueueUserWorkItem(x);
 
 		}

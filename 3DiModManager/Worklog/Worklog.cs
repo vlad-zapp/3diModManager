@@ -20,6 +20,7 @@ namespace _3DiModManager.Worklog
 			Actions.Add(AddAction);
 		}
 
+		//Not needed now
 		//public void EditCar(CarEntity car)
 		//{
 		//    var EditAction = new Action()
@@ -38,6 +39,29 @@ namespace _3DiModManager.Worklog
 				Type = ActionType.Delete
 			};
 			Actions.Add(DeleteAction);
+		}
+
+		public void Optimize()
+		{
+			var filteredActions = new List<Action>();
+			
+			foreach (var action in Actions)
+			{
+				var lastWithTheSameCar = filteredActions.LastOrDefault(m => m.Car == action.Car);
+				
+				if(lastWithTheSameCar==null)
+					Actions.Add(action);
+				else
+				{
+					filteredActions.Remove(lastWithTheSameCar);
+					if(lastWithTheSameCar.Type==action.Type)
+					{
+						filteredActions.Add(action);
+					}
+				}
+			}
+
+			Actions = filteredActions;
 		}
 	}
 }
