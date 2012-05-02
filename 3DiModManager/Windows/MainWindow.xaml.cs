@@ -47,7 +47,7 @@ namespace _3DiModManager
 			}
 
 			Manager = new ModManager(gamePath);
-			Manager.onSaved = () =>
+			Manager.OnSaved = () =>
 			                  	{
 			                  		this.Dispatcher.InvokeShutdown();
 			                  	};
@@ -63,7 +63,7 @@ namespace _3DiModManager
 
 		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
 		{
-			if (!Manager.changed)
+			if (!Manager.Changed)
 			    return;
 
 			var result = MessageBox.Show("Сохранить изменения?", "Внимание", MessageBoxButton.YesNo, MessageBoxImage.Question);

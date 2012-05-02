@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 
-namespace _3DiModManager.Worklog
+namespace _3DiModManager.Worklogs
 {
 	class Action
 	{

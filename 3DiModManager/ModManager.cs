@@ -8,16 +8,16 @@ using System.Threading;
 using System.Windows;
 using System.Xml.Linq;
 using SharpCompress.Reader;
-using _3DiModManager.Worklog;
-using Action = _3DiModManager.Worklog.Action;
+using _3DiModManager.Worklogs;
 
 namespace _3DiModManager
 {
 	public sealed class ModManager
 	{
 		#region fields & stuff
+
 		private const string PlayerCarsPath = @"\data\config\player_cars.xml";
-		private IEnumerable<string> CarFilePaths = new string[]
+		private readonly IEnumerable<string> _carFilePaths = new[]
 		                                           	{
 														@"\data\gamedata\cars\",
 														@"\data\gui\Common\layouts\cars\",
@@ -30,16 +30,18 @@ namespace _3DiModManager
 														@"\export\meshes\cars\"
 		                                           	};
 
-		private readonly string RootPath;
-		private Worklog.Worklog worklog;
+		private readonly string _rootPath;
+		private readonly Worklog _worklog;
+
+		public bool SafeMode { get; set; }
 
 		public ObservableCollection<CarEntity> Cars { get; set; }
-		public bool changed {
-			get { return worklog.Actions.Count > 0 ? true : false; }
+		public bool Changed {
+			get { return _worklog.Actions.Count > 0; }
 		}
 
-		public delegate void voidDelegate();
-		public voidDelegate onSaved;
+		public delegate void VoidDelegate();
+		public VoidDelegate OnSaved;
 
 
 		#endregion
@@ -48,14 +50,13 @@ namespace _3DiModManager
 
 		public ModManager(string rootPath)
 		{
+			SafeMode = true;
 			CheckRoot(rootPath);
-			RootPath = rootPath;
-			worklog = new Worklog.Worklog();
+			_rootPath = rootPath;
+			_worklog = new Worklog();
 
 			Cars = new ObservableCollection<CarEntity>();
-			XElement playerCarsConfig = null;
-
-			playerCarsConfig = XElement.Load(RootPath + PlayerCarsPath);
+			var playerCarsConfig = XElement.Load(_rootPath + PlayerCarsPath);
 
 			if (playerCarsConfig.HasElements)
 			{
@@ -79,12 +80,14 @@ namespace _3DiModManager
 		public void LoadCarFromArchieve(string fileName)
 		{
 			var car = LoadCarConfigFromArchieve(fileName);
+			
 			if (car == null)
 			{
 				MessageBox.Show("Данный архив не содержит данных автомобиля", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Stop);
 				return;
 			}
-			else if (car.Description == null || car.DisplayName == null)
+			
+			if (car.Description == null || car.DisplayName == null)
 			{
 				var settings = new CarSettingsWindow(car);
 				settings.ShowDialog();
@@ -92,6 +95,7 @@ namespace _3DiModManager
 			}
 
 			var existingCar = Cars.FirstOrDefault(m => m.Name == car.Name);
+			
 			if (existingCar != null)
 			{
 				var result = MessageBox.Show(
@@ -101,17 +105,19 @@ namespace _3DiModManager
 					return;
 
 				//remove all cars matched by name
-				while (Cars.Remove(Cars.FirstOrDefault(m => m.Name == car.Name))) ;
+				while (Cars.Remove(Cars.FirstOrDefault(m => m.Name == car.Name)))
+				{
+				}
 			}
 			Cars.Add(car);
-			worklog.AddCar(fileName,car);
+			_worklog.AddCar(fileName,car);
 		}
 
 		private CarEntity LoadCarConfigFromArchieve(string fileName)
 		{
-			Dictionary<string, int> nameCandidates = new Dictionary<string, int>();
+			var nameCandidates = new Dictionary<string, int>();
 
-			FileStream input = new FileStream(fileName, FileMode.Open);
+			var input = new FileStream(fileName, FileMode.Open);
 			var archieveReader = ReaderFactory.Open(input);
 			XElement carNode = null;
 
@@ -148,7 +154,7 @@ namespace _3DiModManager
 							input_config.Close();
 					}
 				}
-				else if (CarFilePaths.Any(m => ("\\"+Path.GetDirectoryName(archieveReader.Entry.FilePath)+"\\").Contains(m)))
+				else if (_carFilePaths.Any(m => ("\\"+Path.GetDirectoryName(archieveReader.Entry.FilePath)+"\\").Contains(m)))
 				{
 					var dirName = Path.GetDirectoryName(archieveReader.Entry.FilePath).Split('\\').LastOrDefault();
 
@@ -173,38 +179,39 @@ namespace _3DiModManager
 
 			if (nameCandidates.Count > 0)
 				return 
-					new CarEntity()
-					{
-						Name = nameCandidates.OrderBy(m => m.Value).Last().Key
-					};
+					new CarEntity
+						{
+							Name = nameCandidates.OrderBy(m => m.Value).Last().Key
+						};
 
 			return null;
 		}
 
-		private void UnpackCarToGame(string fileName)
+		private void UnpackCarToGame(string fileName, string carName)
 		{
-
-			FileStream input = new FileStream(fileName, FileMode.Open);
+			//TODO: Speed it up somehow
+			var input = new FileStream(fileName, FileMode.Open);
 			var archieveReader = ReaderFactory.Open(input);
 
 			while (archieveReader.MoveToNextEntry())
 			{
 				var path = System.IO.Path.GetDirectoryName(@"\" + archieveReader.Entry.FilePath);
-				if (path.Contains(@"\data\"))
-				{
-					path = path.Substring(path.IndexOf(@"\data\"));
-				}
-				else if (path.Contains(@"\export\"))
-				{
-					path = path.Substring(path.IndexOf(@"\export\"));
-				}
-				else
-				{
-					continue;
-				}
 
-				Directory.CreateDirectory(RootPath + path);
-				archieveReader.WriteEntryToDirectory(RootPath + path);
+				//in safe mode - don't unpack files not related to a car!
+				if(SafeMode && !path.Contains(carName))
+					continue;
+
+				if (path.Contains(@"\data\"))
+					path = path.Substring(path.IndexOf(@"\data\"));
+				
+				else if (path.Contains(@"\export\"))
+					path = path.Substring(path.IndexOf(@"\export\"));
+				
+				else
+					continue;
+				
+				Directory.CreateDirectory(_rootPath + path);
+				archieveReader.WriteEntryToDirectory(_rootPath + path);
 			}
 			input.Close();
 		}
@@ -218,17 +225,17 @@ namespace _3DiModManager
 			var carToRemove = Cars.FirstOrDefault(m => m.Name == name);
 			if (Cars.Remove(carToRemove))
 			{
-				worklog.DeleteCar(carToRemove);
+				_worklog.DeleteCar(carToRemove);
 			}
 		}
 
 		public void DeleteCarFromGame(string name)
 		{
-			foreach (var carPath in CarFilePaths)
+			foreach (var carPath in _carFilePaths)
 			{
 				try
 				{
-					Directory.Delete(RootPath + carPath + name, true);
+					Directory.Delete(_rootPath + carPath + name, true);
 				}
 				catch
 				{
@@ -242,12 +249,12 @@ namespace _3DiModManager
 		{
 			WaitCallback x = state =>
 			                 	{
-			                 		worklog.Optimize();
-			                 		foreach (var action in worklog.Actions)
+			                 		_worklog.Optimize();
+			                 		foreach (var action in _worklog.Actions)
 			                 		{
 			                 			if (action.Type == ActionType.Add)
 			                 			{
-			                 				UnpackCarToGame(action.FileName);
+			                 				UnpackCarToGame(action.FileName, action.Car.Name);
 			                 			}
 			                 			else if (action.Type == ActionType.Delete)
 			                 			{
@@ -262,16 +269,12 @@ namespace _3DiModManager
 									}
 
 									//TODO: force to save it in utf8?
-									playerCarsConfig.Save(RootPath + PlayerCarsPath);
-
-									//worklog.Actions = new List<Action>();
-			                 		onSaved();
+									playerCarsConfig.Save(_rootPath + PlayerCarsPath);
+			                 		OnSaved();
 			                 	};
 
 			//it will not block UI. This is for the future features.
 			ThreadPool.QueueUserWorkItem(x);
-
 		}
-
 	}
 }

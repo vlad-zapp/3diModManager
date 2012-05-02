@@ -59,9 +59,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Worklog\Action.cs" />
-    <Compile Include="Worklog\ActionType.cs" />
-    <Compile Include="Worklog\Worklog.cs" />
+    <Compile Include="Worklogs\Action.cs" />
+    <Compile Include="Worklogs\ActionType.cs" />
+    <Compile Include="Worklogs\Worklog.cs" />
     <Page Include="Windows\CarSettingsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
