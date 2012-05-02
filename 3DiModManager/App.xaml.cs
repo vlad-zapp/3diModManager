@@ -12,5 +12,12 @@ namespace _3DiModManager
 	/// </summary>
 	public partial class App : Application
 	{
+		private void Application_Startup(object sender, StartupEventArgs e)
+		{
+			if (e.Args.Length > 0)
+			{
+				this.Properties["GamePath"] = e.Args[0];
+			}
+		}
 	}
 }

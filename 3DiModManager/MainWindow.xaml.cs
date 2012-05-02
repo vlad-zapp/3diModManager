@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,15 +19,40 @@ namespace _3DiModManager
 	{
 		public ModManager Manager { get; set; }
 		public List<CarEntity> Cars { get; set; }
-		private string gamePath = 
-			Path.GetDirectoryName(
-			(Path.GetDirectoryName(
-			Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)))) + @"\TestEnvironment";//@"D:\games\3D Instructor 2 Home";//games\3D Instructor 2 Home";
+		private string gamePath;
+			
+		//Path.GetDirectoryName(
+			//(Path.GetDirectoryName(
+			//Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)))) + @"\TestEnvironment";//@"D:\games\3D Instructor 2 Home";//games\3D Instructor 2 Home";
 
 		public MainWindow()
 		{
+			if(App.Current.Properties.Contains("GamePath"))
+			{
+				gamePath = App.Current.Properties["GamePath"] as string;
+			} 
+			else
+			{
+				gamePath=Registry.GetValue(@"HKEY_CURRENT_USER\Software\Forward Development\3D Инструктор 2 Домашняя версия", "path", null) as string;
+			}
+
+			if(String.IsNullOrEmpty(gamePath))
+			{
+				MessageBox.Show(
+					"Игра не найдена. Если она все таки установлена - укажите ее путь в качестве параметра коммандной строки.",
+					"Ошибка", MessageBoxButton.OK, MessageBoxImage.Stop);
+				
+				Close();
+				return;
+			}
+
 			Manager = new ModManager(gamePath);
-			InitializeComponent();
+			Manager.onSaved = () =>
+			                  	{
+			                  		this.Dispatcher.InvokeShutdown();
+			                  	};
+
+		InitializeComponent();
 			MyListView.SizeChanged += (s, e) =>
 			{
 				((GridViewColumn)((GridView)MyListView.View).Columns[0]).Width = 50;
@@ -38,14 +64,14 @@ namespace _3DiModManager
 		private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
 		{
 			if (!Manager.changed)
-				return;
+			    return;
 
 			var result = MessageBox.Show("Сохранить изменения?", "Внимание", MessageBoxButton.YesNo, MessageBoxImage.Question);
 			if(result==MessageBoxResult.Yes)
 			{
 				Manager.SaveChanges();
+				e.Cancel = true;
 			}
-			Manager.CleanCarsFiles();
 		}
 
 		private void Window_Drop(object sender, DragEventArgs e)
@@ -63,13 +89,17 @@ namespace _3DiModManager
 
 		private void deleteCommand(object sender, RoutedEventArgs e)
 		{
-			if(MyListView.SelectedItem!=null)
+			if(MyListView.SelectedItems.Count!=0)
 			{
-				Manager.DeleteCar((MyListView.SelectedItem as CarEntity).Name);
-			} else
+				var selectedCars = new List<string>(MyListView.SelectedItems.OfType<CarEntity>().Select(m => m.Name));
+				foreach (var item in selectedCars)
+				{
+					Manager.DeleteCar(item);
+				}
+			} 
+			else
 			{
-				MessageBox.Show("Сначала нужно выбрать автомобили для удаления", "Ошибка", MessageBoxButton.OK,
-				                MessageBoxImage.Error);
+				MessageBox.Show("Сначала нужно выбрать автомобили для удаления", "Ошибка", MessageBoxButton.OK,MessageBoxImage.Error);
 			}
 		}
 
@@ -79,8 +109,7 @@ namespace _3DiModManager
 			openDlg.Multiselect = true;
 			openDlg.Filter += "Архивы |*.rar;*.zip";
 
-			openDlg.ShowDialog();
-			
+			openDlg.ShowDialog();	
 
 			if (openDlg.FileNames!=null)
 			{
@@ -95,7 +124,6 @@ namespace _3DiModManager
 		{
 			CarSettingsWindow a = new CarSettingsWindow(MyListView.SelectedItem as CarEntity);
 			a.Show();
-			Manager.changed = true;
 		}
 	}
 }

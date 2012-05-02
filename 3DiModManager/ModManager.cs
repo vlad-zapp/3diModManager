@@ -8,17 +8,20 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows;
 using System.Xml;
 using System.Xml.Linq;
 using SharpCompress.Reader;
+using _3DiModManager.Worklog;
+using Action = _3DiModManager.Worklog.Action;
 
 namespace _3DiModManager
 {
 	public sealed class ModManager
 	{
+		#region fields & stuff
 		private const string PlayerCarsPath = @"\data\config\player_cars.xml";
-
 		private IEnumerable<string> CarFilePaths = new string[]
 		                                           	{
 														@"\data\gamedata\cars\",
@@ -33,28 +36,38 @@ namespace _3DiModManager
 		                                           	};
 
 		private readonly string RootPath;
-		private List<XElement> playerCars;
+		private Worklog.Worklog worklog;
 
-		public bool changed;
-
-		private ObservableCollection<CarEntity> _cars; 
-		public ObservableCollection<CarEntity> Cars {
-			get
-			{
-				UpdateCarsList();
-				return _cars;
-			}
-			set
-			{
-				_cars = value;
-			}
+		public ObservableCollection<CarEntity> Cars { get; set; }
+		public bool changed {
+			get { return worklog.Actions.Count > 0 ? true : false; }
 		}
+
+		public delegate void voidDelegate();
+		public voidDelegate onSaved;
+
+
+		#endregion
 
 		public ModManager(string rootPath)
 		{
-			changed = false;
 			CheckRoot(rootPath);
 			RootPath = rootPath;
+			worklog = new Worklog.Worklog();
+
+			Cars = new ObservableCollection<CarEntity>();
+			XElement playerCarsConfig = null;
+
+			playerCarsConfig = XElement.Load(RootPath + PlayerCarsPath);
+
+			if (playerCarsConfig.HasElements)
+			{
+				var playerCars = playerCarsConfig.Elements().ToList();
+				foreach (var carXml in playerCars)
+				{
+					Cars.Add(MakeCarFromXml(carXml));
+				}
+			}
 		}
 
 		private void CheckRoot(string rootPath)
@@ -62,39 +75,24 @@ namespace _3DiModManager
 			//rootPath.Last()=='/'?
 		}
 
-		public void UpdateCarsList()
-		{
-			_cars = new ObservableCollection<CarEntity>();
-			XElement playerCarsConfig = null;
+		#region add car
 
-			playerCarsConfig = XElement.Load(RootPath + PlayerCarsPath);
-
-			if (playerCarsConfig.HasElements)
-			{
-				playerCars = playerCarsConfig.Elements().ToList();
-				foreach (var carXml in playerCars)
-				{
-					_cars.Add(MakeCarFromXml(carXml));
-				}
-			}
-		}
-	
 		public void LoadCarFromArchieve(string fileName)
 		{
-			var car=LoadCarConfigFromArchieve(fileName);
-			if(car==null)
+			var car = LoadCarConfigFromArchieve(fileName);
+			if (car == null)
 			{
 				MessageBox.Show("Данный архив не содержит данных автомобиля", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Stop);
 				return;
 			}
-			else if (car.Description == null || car.DisplayName==null)
+			else if (car.Description == null || car.DisplayName == null)
 			{
 				var settings = new CarSettingsWindow(car);
 				settings.ShowDialog();
 				car.IsIngame = true;
 			}
 
-			var existingCar = _cars.FirstOrDefault(m => m.Name == car.Name);
+			var existingCar = Cars.FirstOrDefault(m => m.Name == car.Name);
 			if (existingCar != null)
 			{
 				var result = MessageBox.Show(
@@ -104,40 +102,15 @@ namespace _3DiModManager
 					return;
 
 				//remove all cars matched by name
-				while (_cars.Remove(_cars.FirstOrDefault(m => m.Name == car.Name)));
+				while (Cars.Remove(Cars.FirstOrDefault(m => m.Name == car.Name))) ;
 			}
-
-
-			FileStream input = new FileStream(fileName, FileMode.Open);
-			var archieveReader = ReaderFactory.Open(input);
-
-			while (archieveReader.MoveToNextEntry())
-			{
-				var path = System.IO.Path.GetDirectoryName(@"\" + archieveReader.Entry.FilePath);
-				if (path.Contains(@"\data\"))
-				{
-					path = path.Substring(path.IndexOf(@"\data\"));
-				}
-				else if (path.Contains(@"\export\"))
-				{
-					path = path.Substring(path.IndexOf(@"\export\"));
-				} else
-				{
-					continue;
-				}
-
-				Directory.CreateDirectory(RootPath+path);
-				archieveReader.WriteEntryToDirectory(RootPath+path);
-			}
-
-			_cars.Add(car);
-			changed = true;
-			input.Close();
+			Cars.Add(car);
+			worklog.AddCar(fileName,car);
 		}
 
 		private CarEntity LoadCarConfigFromArchieve(string fileName)
 		{
-			Dictionary<string, int> nameCandidates=new Dictionary<string, int>();
+			Dictionary<string, int> nameCandidates = new Dictionary<string, int>();
 
 			FileStream input = new FileStream(fileName, FileMode.Open);
 			var archieveReader = ReaderFactory.Open(input);
@@ -145,7 +118,7 @@ namespace _3DiModManager
 
 			while (archieveReader.MoveToNextEntry() && carNode == null)
 			{
-				var name = '\\'+Path.GetFileName(archieveReader.Entry.FilePath);
+				var name = '\\' + Path.GetFileName(archieveReader.Entry.FilePath);
 				if (name.EndsWith(".xml") || name.EndsWith(".txt"))
 				{
 					StreamReader input_config = null;
@@ -166,22 +139,27 @@ namespace _3DiModManager
 						else
 							carNode = someXml.Descendants("Car").FirstOrDefault();
 					}
+					catch
+					{
+						continue;
+					}
 					finally
 					{
 						if (input_config != null)
 							input_config.Close();
 					}
-				} 
-				else if(CarFilePaths.Any(m=>archieveReader.Entry.FilePath.Contains(m)))
+				}
+				else if (CarFilePaths.Any(m => ("\\"+Path.GetDirectoryName(archieveReader.Entry.FilePath)+"\\").Contains(m)))
 				{
 					var dirName = Path.GetDirectoryName(archieveReader.Entry.FilePath).Split('\\').LastOrDefault();
-					
+
 					if (!string.IsNullOrEmpty(dirName))
 					{
 						if (!nameCandidates.ContainsKey(dirName))
 						{
 							nameCandidates[dirName] = 1;
-						} else
+						}
+						else
 						{
 							nameCandidates[dirName]++;
 						}
@@ -191,16 +169,16 @@ namespace _3DiModManager
 
 			input.Close();
 
-			if(carNode!=null)
+			if (carNode != null)
 			{
 				return MakeCarFromXml(carNode);
 			}
-			else if (nameCandidates.Count>0)
+			else if (nameCandidates.Count > 0)
 			{
 				return new CarEntity()
-				       	{
-				       		Name = nameCandidates.OrderBy(m => m.Value).Last().Key
-				       	};
+				{
+					Name = nameCandidates.OrderBy(m => m.Value).Last().Key
+				};
 			}
 			else
 			{
@@ -208,23 +186,77 @@ namespace _3DiModManager
 			}
 		}
 
-		private CarEntity MakeCarFromXml(XElement carNode, bool trackChanges=true)
+		private void UnpackCarToGame(string fileName)
+		{
+
+			FileStream input = new FileStream(fileName, FileMode.Open);
+			var archieveReader = ReaderFactory.Open(input);
+
+			while (archieveReader.MoveToNextEntry())
+			{
+				var path = System.IO.Path.GetDirectoryName(@"\" + archieveReader.Entry.FilePath);
+				if (path.Contains(@"\data\"))
+				{
+					path = path.Substring(path.IndexOf(@"\data\"));
+				}
+				else if (path.Contains(@"\export\"))
+				{
+					path = path.Substring(path.IndexOf(@"\export\"));
+				}
+				else
+				{
+					continue;
+				}
+
+				Directory.CreateDirectory(RootPath + path);
+				archieveReader.WriteEntryToDirectory(RootPath + path);
+			}
+			input.Close();
+		}
+
+		#endregion
+
+		#region remove car
+
+		public void DeleteCar(string name)
+		{
+			var carToRemove = Cars.FirstOrDefault(m => m.Name == name);
+			if (Cars.Remove(carToRemove))
+			{
+				worklog.DeleteCar(carToRemove);
+			}
+		}
+
+		public void DeleteCarFromGame(string name)
+		{
+			foreach (var carPath in CarFilePaths)
+			{
+				try
+				{
+					Directory.Delete(RootPath + carPath + name, true);
+				}
+				catch
+				{
+				}
+			}
+		}
+
+		#endregion
+
+		#region car-xml convertions
+		private CarEntity MakeCarFromXml(XElement carNode, bool trackChanges = true)
 		{
 			var currentCar = new CarEntity()
 			{
 				Name = carNode.Attribute("Name").Value,
 				DisplayName = carNode.Element("DisplayName").Value,
-				ABS = bool.Parse(carNode.Attribute("ABS").Value),
-				AT = bool.Parse(carNode.Attribute("AT").Value),
-				Description = carNode.Element("Description").Value,
-				Author = carNode.Element("Author") != null ? carNode.Element("Author").Value : "",
+				ABS = carNode.Attribute("ABS")!=null?bool.Parse(carNode.Attribute("ABS").Value):false,
+				AT = carNode.Attribute("AT")!=null?bool.Parse(carNode.Attribute("AT").Value):false,
+				Description = carNode.Element("Description") != null ? carNode.Element("Description").Value : string.Empty,
+				Author = carNode.Element("Author") != null ? carNode.Element("Author").Value : "Неизвестен",
 				IsIngame = carNode.Name.LocalName == "Car" ? true : false,
 			};
-			
-			if (trackChanges)
-			{
-				currentCar.PropertyChanged += (e, k) => changed = true;
-			}
+
 			return currentCar;
 		}
 
@@ -239,43 +271,42 @@ namespace _3DiModManager
 			carXml.SetElementValue("DisplayName", car.DisplayName);
 			carXml.SetElementValue("Description", car.Description);
 			carXml.SetElementValue("Author", car.Author);
-			
+
 			return carXml;
 		}
 
-		public void DeleteCar(string name)
-		{
-			var carToRemove = _cars.FirstOrDefault(m=>m.Name==name);
-			if (_cars.Remove(carToRemove))
-				changed = true;
-		}
-
-		public void CleanCarsFiles(bool carsFromXml = true)
-		{
-			if (carsFromXml)
-				UpdateCarsList();
-
-			var storedCars = _cars.Select(m => m.Name);
-
-			foreach (var path in CarFilePaths)
-			{
-				var trash = Directory.GetDirectories(RootPath + path).Where(m => !storedCars.Any(n => m.EndsWith(n)));
-				foreach (var dir in trash)
-				{
-					Directory.Delete(dir, true);
-				}
-			}
-		}
+		#endregion
 
 		public void SaveChanges()
 		{
-			var playerCarsConfig = new XElement("Cars");
-			foreach (var car in _cars)
-			{
-				playerCarsConfig.Add(MakeXmlFromcar(car));
-			}
-			//TODO: save it in utf8
-			playerCarsConfig.Save(RootPath + PlayerCarsPath);
+			WaitCallback x = state =>
+			                 	{
+			                 		foreach (var action in worklog.Actions)
+			                 		{
+			                 			if (action.Type == ActionType.Add)
+			                 			{
+			                 				UnpackCarToGame(action.FileName);
+			                 			}
+			                 			else if (action.Type == ActionType.Delete)
+			                 			{
+			                 				DeleteCarFromGame(action.Car.Name);
+			                 			}
+			                 		}
+
+									var playerCarsConfig = new XElement("Cars");
+									foreach (var car in Cars)
+									{
+										playerCarsConfig.Add(MakeXmlFromcar(car));
+									}
+
+									//TODO: force to save it in utf8?
+									playerCarsConfig.Save(RootPath + PlayerCarsPath);
+
+									//worklog.Actions = new List<Action>();
+			                 		onSaved();
+			                 	};
+			ThreadPool.QueueUserWorkItem(x);
+
 		}
 
 	}

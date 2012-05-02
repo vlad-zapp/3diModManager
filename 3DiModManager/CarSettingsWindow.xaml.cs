@@ -42,6 +42,13 @@ namespace _3DiModManager
 			: this()
 		{
 			Car = source;
+			if (!string.IsNullOrEmpty(Car.DisplayName))
+			{
+				Title = String.Format("Редактирование {0} ({1})", Car.DisplayName, Car.Name);
+			} else
+			{
+				Title = String.Format("Редактирование ({0})", Car.Name);
+			}
 		}
 
 		public event PropertyChangedEventHandler PropertyChanged;
