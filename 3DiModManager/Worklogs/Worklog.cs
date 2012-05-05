@@ -50,7 +50,7 @@ namespace _3DiModManager.Worklogs
 				var lastWithTheSameCar = filteredActions.LastOrDefault(m => m.Car == action.Car);
 				
 				if(lastWithTheSameCar==null)
-					Actions.Add(action);
+					filteredActions.Add(action);
 				else
 				{
 					filteredActions.Remove(lastWithTheSameCar);
