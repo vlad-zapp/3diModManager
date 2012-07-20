@@ -17,7 +17,7 @@ namespace _3DiModManager
 	/// <summary>
 	/// Interaction logic for CarSettingsWindow.xaml
 	/// </summary>
-	public partial class CarSettingsWindow : Window, INotifyPropertyChanged
+	public partial class CarSettingsWindow : INotifyPropertyChanged
 	{
 		private CarEntity _car;
 		public CarEntity Car
@@ -42,13 +42,21 @@ namespace _3DiModManager
 			: this()
 		{
 			Car = source;
+
 			if (!string.IsNullOrEmpty(Car.DisplayName))
 			{
 				Title = String.Format("Редактирование {0} ({1})", Car.DisplayName, Car.Name);
-			} else
+			} 
+			else
 			{
 				Title = String.Format("Редактирование ({0})", Car.Name);
 			}
+		}
+
+		protected override void OnClosed(EventArgs e)
+		{
+			base.OnClosed(e);
+			Car.Update();
 		}
 
 		public event PropertyChangedEventHandler PropertyChanged;

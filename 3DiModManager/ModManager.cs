@@ -36,8 +36,12 @@ namespace _3DiModManager
 		public bool SafeMode { get; set; }
 
 		public ObservableCollection<CarEntity> Cars { get; set; }
-		public bool Changed {
-			get { return _worklog.Actions.Count > 0; }
+		public bool Changed { 
+			get
+			{
+				_worklog.Optimize();
+				return _worklog.HasWork;
+			}
 		}
 
 		public delegate void VoidDelegate();
@@ -64,8 +68,14 @@ namespace _3DiModManager
 				foreach (var carXml in playerCars)
 				{
 					Cars.Add(CarEntity.FromXml(carXml));
+					TrackCarChanges(Cars.Last());
 				}
 			}
+		}
+
+		private void TrackCarChanges(CarEntity car)
+		{
+			car.PropertyChanged += (s, a) => _worklog.EditCar(car);
 		}
 
 		private void CheckRoot(string rootPath)
@@ -245,11 +255,15 @@ namespace _3DiModManager
 
 		#endregion
 
+		public void EditCar(CarEntity car)
+		{
+			_worklog.EditCar(car);
+		}
+
 		public void SaveChanges()
 		{
 			WaitCallback x = state =>
 			                 	{
-			                 		_worklog.Optimize();
 			                 		foreach (var action in _worklog.Actions)
 			                 		{
 			                 			if (action.Type == ActionType.Add)
@@ -266,6 +280,7 @@ namespace _3DiModManager
 									foreach (var car in Cars)
 									{
 										playerCarsConfig.Add(car.AsXml());
+										car.UpdateVersion();
 									}
 
 									//TODO: force to save it in utf8?

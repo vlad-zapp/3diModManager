@@ -19,34 +19,25 @@ namespace _3DiModManager
 	{
 		public ModManager Manager { get; set; }
 		public List<CarEntity> Cars { get; set; }
-		private string gamePath;
 			
-		//Path.GetDirectoryName(
-			//(Path.GetDirectoryName(
-			//Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)))) + @"\TestEnvironment";//@"D:\games\3D Instructor 2 Home";//games\3D Instructor 2 Home";
-
 		public MainWindow()
 		{
-			if(App.Current.Properties.Contains("GamePath"))
+			if(!App.Current.Properties.Contains("GamePath"))
 			{
-				gamePath = App.Current.Properties["GamePath"] as string;
-			} 
-			else
-			{
-				gamePath=Registry.GetValue(@"HKEY_CURRENT_USER\Software\Forward Development\3D Инструктор 2 Домашняя версия", "path", null) as string;
+				App.Current.Properties["GamePath"] = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Forward Development\3D Инструктор 2 Домашняя версия", "path", null) as string;
 			}
 
-			if(String.IsNullOrEmpty(gamePath))
+			if (String.IsNullOrEmpty(App.Current.Properties["GamePath"].ToString()))
 			{
 				MessageBox.Show(
-					"Игра не найдена. Если она все таки установлена - укажите ее путь в качестве параметра коммандной строки.",
+					"Игра не найдена. Если она все таки установлена - укажите ее путь в качестве параметра коммандной строки (GamePath).",
 					"Ошибка", MessageBoxButton.OK, MessageBoxImage.Stop);
 				
 				Close();
 				return;
 			}
 
-			Manager = new ModManager(gamePath);
+			Manager = new ModManager(App.Current.Properties["GamePath"].ToString());
 			Manager.OnSaved = () =>
 			                  	{
 			                  		this.Dispatcher.InvokeShutdown();
@@ -122,8 +113,9 @@ namespace _3DiModManager
 
 		private void showCarDetailsCommand(object sender, RoutedEventArgs e)
 		{
-			CarSettingsWindow a = new CarSettingsWindow(MyListView.SelectedItem as CarEntity);
-			a.Show();
+			CarSettingsWindow settingsWindow = new CarSettingsWindow(MyListView.SelectedItem as CarEntity);
+			settingsWindow.Show();
+			Manager.EditCar(MyListView.SelectedItem as CarEntity);
 		}
 	}
 }
